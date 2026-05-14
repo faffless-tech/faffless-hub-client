@@ -55,6 +55,13 @@ $applications = $hub->applications(['active' => true]);
 $created = $hub->createApplication(['name' => 'Rental PWA']);
 $secret = $created['secret'];
 $providerAccounts = $hub->providerAccounts(['channel' => 'email']);
+$provider = $hub->createProviderAccount([
+    'name' => 'Handy Rentals SendGrid',
+    'provider' => 'sendgrid',
+    'channel' => 'email',
+    'secret_key' => 'api_key',
+    'secret' => 'SG.secret',
+]);
 ```
 
 Phone verification:
