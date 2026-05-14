@@ -52,6 +52,8 @@ Read management data:
 
 ```php
 $applications = $hub->applications(['active' => true]);
+$created = $hub->createApplication(['name' => 'Rental PWA']);
+$secret = $created['secret'];
 $providerAccounts = $hub->providerAccounts(['channel' => 'email']);
 ```
 

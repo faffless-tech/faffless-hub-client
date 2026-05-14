@@ -25,6 +25,13 @@ class FafflessHubClient
             ->throw();
     }
 
+    public function patch(string $path, array $payload = []): Response
+    {
+        return $this->request()
+            ->patch($this->url($path), $this->clean($payload))
+            ->throw();
+    }
+
     public function sendInteraction(string $path, array $payload = [], ?string $idempotencyKey = null): array
     {
         return $this->json($this->post($path, $payload, $idempotencyKey));
@@ -107,6 +114,26 @@ class FafflessHubClient
     public function application(int|string $applicationId): array
     {
         return $this->json($this->get("/api/v1/applications/{$applicationId}"));
+    }
+
+    public function createApplication(array $payload): array
+    {
+        return $this->json($this->post('/api/v1/applications', $payload));
+    }
+
+    public function updateApplication(int|string $applicationId, array $payload): array
+    {
+        return $this->json($this->patch("/api/v1/applications/{$applicationId}", $payload));
+    }
+
+    public function rotateApplicationSecret(int|string $applicationId): array
+    {
+        return $this->json($this->post("/api/v1/applications/{$applicationId}/rotate-secret"));
+    }
+
+    public function disableApplication(int|string $applicationId): array
+    {
+        return $this->json($this->post("/api/v1/applications/{$applicationId}/disable"));
     }
 
     public function providerAccounts(array $filters = []): array
