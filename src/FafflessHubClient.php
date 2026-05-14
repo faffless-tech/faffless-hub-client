@@ -166,6 +166,21 @@ class FafflessHubClient
         return $this->json($this->post("/api/v1/provider-accounts/{$providerAccountId}/disable"));
     }
 
+    public function createProviderService(int|string $providerAccountId, array $payload): array
+    {
+        return $this->json($this->post("/api/v1/provider-accounts/{$providerAccountId}/services", $payload));
+    }
+
+    public function updateProviderService(int|string $providerServiceId, array $payload): array
+    {
+        return $this->json($this->patch("/api/v1/provider-services/{$providerServiceId}", $payload));
+    }
+
+    public function disableProviderService(int|string $providerServiceId): array
+    {
+        return $this->json($this->post("/api/v1/provider-services/{$providerServiceId}/disable"));
+    }
+
     protected function request(?string $idempotencyKey = null): PendingRequest
     {
         $appId = config('faffless-hub.app_id');

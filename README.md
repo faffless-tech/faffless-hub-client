@@ -62,6 +62,11 @@ $provider = $hub->createProviderAccount([
     'secret_key' => 'api_key',
     'secret' => 'SG.secret',
 ]);
+$service = $hub->createProviderService($provider['provider_account']['id'], [
+    'name' => 'Transactional Email',
+    'service_type' => 'email',
+    'status' => 'active',
+]);
 ```
 
 Phone verification:
