@@ -99,6 +99,26 @@ class FafflessHubClient
         return $this->json($this->get("/api/v1/interactions/{$interactionId}/artifacts"))['artifacts'] ?? [];
     }
 
+    public function applications(array $filters = []): array
+    {
+        return $this->json($this->get('/api/v1/applications', $filters));
+    }
+
+    public function application(int|string $applicationId): array
+    {
+        return $this->json($this->get("/api/v1/applications/{$applicationId}"));
+    }
+
+    public function providerAccounts(array $filters = []): array
+    {
+        return $this->json($this->get('/api/v1/provider-accounts', $filters));
+    }
+
+    public function providerAccount(int|string $providerAccountId): array
+    {
+        return $this->json($this->get("/api/v1/provider-accounts/{$providerAccountId}"));
+    }
+
     protected function request(?string $idempotencyKey = null): PendingRequest
     {
         $appId = config('faffless-hub.app_id');

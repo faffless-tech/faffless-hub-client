@@ -48,6 +48,13 @@ $interactionId = $response->interactionId;
 $events = $hub->events($interactionId);
 ```
 
+Read management data:
+
+```php
+$applications = $hub->applications(['active' => true]);
+$providerAccounts = $hub->providerAccounts(['channel' => 'email']);
+```
+
 Phone verification:
 
 ```php
