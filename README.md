@@ -26,8 +26,8 @@ Configure credentials:
 
 ```dotenv
 FAFFLESS_HUB_URL=https://communication.faffless.ai
-FAFFLESS_HUB_APP_ID=hub_example
-FAFFLESS_HUB_APP_SECRET=secret-from-hub
+FAFFLESS_HUB_API_KEY=hub_example
+FAFFLESS_HUB_API_SECRET=secret-from-hub
 ```
 
 ## Usage

@@ -183,17 +183,17 @@ class FafflessHubClient
 
     protected function request(?string $idempotencyKey = null): PendingRequest
     {
-        $appId = config('faffless-hub.app_id');
-        $secret = config('faffless-hub.secret');
+        $apiKey = config('faffless-hub.api_key') ?? config('faffless-hub.app_id');
+        $secret = config('faffless-hub.api_secret') ?? config('faffless-hub.secret');
 
-        if (! $appId || ! $secret) {
+        if (! $apiKey || ! $secret) {
             throw MissingCredentialsException::make();
         }
 
         return Http::timeout((int) config('faffless-hub.timeout', 10))
             ->withHeaders(array_filter([
-                'X-Faffless-Hub-App-Id' => $appId,
-                'X-Faffless-Hub-Secret' => $secret,
+                'X-Faffless-Hub-Api-Key' => $apiKey,
+                'X-Faffless-Hub-Api-Secret' => $secret,
                 'Idempotency-Key' => $idempotencyKey,
             ]));
     }
