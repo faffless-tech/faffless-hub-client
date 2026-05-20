@@ -73,7 +73,7 @@ Phone verification:
 
 ```php
 $verification = $hub->startVerification([
-    'channel' => 'sms',
+    'channel' => 'sms', // or 'call' to start with a voice call
     'recipient' => '+15551234567',
     'purpose' => 'login',
 ]);
@@ -83,6 +83,8 @@ $result = $hub->checkVerification(
     code: '123456',
 );
 ```
+
+Use `channel: call` when the consuming app should start with voice verification instead of the normal SMS-first flow. Use `nextVerification()` to trigger fallback steps such as SMS to call escalation.
 
 ## Contract
 
