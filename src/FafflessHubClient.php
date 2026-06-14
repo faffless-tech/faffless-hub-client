@@ -17,6 +17,16 @@ class FafflessHubClient
 
     protected const INTERNAL_API_PREFIX = '/api/v1/internal';
 
+    protected ?string $applicationApiKey = null;
+
+    public function withApplicationApiKey(string $apiKey): self
+    {
+        $client = clone $this;
+        $client->applicationApiKey = $apiKey;
+
+        return $client;
+    }
+
     public function get(string $path, array $query = []): Response
     {
         return $this->request()
@@ -38,9 +48,14 @@ class FafflessHubClient
             ->throw();
     }
 
+    public function applicationPost(string $path, array $payload = [], ?string $idempotencyKey = null): Response
+    {
+        return $this->post($this->applicationPath($path), $payload, $idempotencyKey);
+    }
+
     public function sendInteraction(string $path, array $payload = [], ?string $idempotencyKey = null): array
     {
-        return $this->json($this->post($this->applicationPath($path), $payload, $idempotencyKey));
+        return $this->json($this->applicationPost($path, $payload, $idempotencyKey));
     }
 
     public function email(array $payload, ?string $idempotencyKey = null): InteractionResponse
@@ -289,7 +304,9 @@ class FafflessHubClient
 
     protected function request(?string $idempotencyKey = null, string $credential = 'api_key'): PendingRequest
     {
-        $apiKey = config('faffless-hub.'.$credential);
+        $apiKey = $credential === 'api_key' && $this->applicationApiKey
+            ? $this->applicationApiKey
+            : config('faffless-hub.'.$credential);
 
         if (! $apiKey) {
             throw MissingCredentialsException::make();
