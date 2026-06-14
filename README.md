@@ -27,8 +27,10 @@ Configure credentials:
 ```dotenv
 FAFFLESS_HUB_URL=https://communication.faffless.ai
 FAFFLESS_HUB_API_KEY=hub_example
-FAFFLESS_HUB_API_SECRET=secret-from-hub
+FAFFLESS_HUB_TENANT_API_KEY=tenant_key_for_tenant_automation
 ```
+
+The client authenticates with a single API key using an `Authorization: Bearer` header. The old app-id/app-secret credential names are not supported.
 
 ## Usage
 
@@ -44,16 +46,49 @@ $response = $hub->email([
     'purpose' => 'hire_update',
 ]);
 
-$interactionId = $response->interactionId;
-$events = $hub->events($interactionId);
+$interactionUuid = $response->interactionUuid;
+$events = $hub->events($interactionUuid);
 ```
 
-Read management data:
+Use the tenant automation API for managed accounts and applications:
+
+```php
+$accounts = $hub->tenantAccounts();
+$account = $hub->createTenantAccount([
+    'name' => 'Handy Rentals',
+]);
+
+$accountUuid = $account['data']['uuid'];
+
+$application = $hub->createTenantAccountApplication($accountUuid, [
+    'name' => 'Rental PWA',
+    'api_key_name' => 'Rental PWA production',
+]);
+
+$applicationUuid = $application['data']['uuid'];
+
+$apiKey = $hub->issueTenantAccountApplicationApiKey(
+    accountUuid: $accountUuid,
+    applicationUuid: $applicationUuid,
+    payload: ['name' => 'Second production key'],
+);
+
+$hub->retireTenantAccountApplicationApiKey(
+    accountUuid: $accountUuid,
+    applicationUuid: $applicationUuid,
+    apiKeyUuid: $apiKey['data']['uuid'],
+);
+```
+
+Use the temporary internal bridge only for first-party console/admin workflows
+that still depend on `/api/v1/internal/...`:
 
 ```php
 $applications = $hub->applications(['active' => true]);
 $created = $hub->createApplication(['name' => 'Rental PWA']);
-$secret = $created['secret'];
+$apiKey = $hub->issueApplicationApiKey($created['application']['uuid'], [
+    'name' => 'Console-issued key',
+]);
 $providerAccounts = $hub->providerAccounts(['channel' => 'email']);
 $provider = $hub->createProviderAccount([
     'name' => 'Handy Rentals SendGrid',
@@ -62,7 +97,7 @@ $provider = $hub->createProviderAccount([
     'secret_key' => 'api_key',
     'secret' => 'SG.secret',
 ]);
-$service = $hub->createProviderService($provider['provider_account']['id'], [
+$service = $hub->createProviderService($provider['provider_account']['uuid'], [
     'name' => 'Transactional Email',
     'service_type' => 'email',
     'status' => 'active',
@@ -90,6 +125,8 @@ Use `channel: call` when the consuming app should start with voice verification 
 
 Creation methods return typed response objects with the raw response in `toArray()`.
 
-`interactionId` is the canonical lifecycle id for attempts, events, and artifacts.
+`interactionUuid` is the canonical lifecycle id for attempts, events, and artifacts.
 
-Domain packages that need the raw hub response array can use `sendInteraction()`.
+Domain packages that need the raw hub response array can use `sendInteraction()`
+with an application API relative path such as `email`, `sms`, or
+`tracker/command`.

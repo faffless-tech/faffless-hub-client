@@ -13,6 +13,9 @@
             "Faffless\\HubClient\\": "src/"
         }
     },
+    "scripts": {
+        "test": "php tests/ContractTest.php"
+    },
     "extra": {
         "laravel": {
             "providers": [

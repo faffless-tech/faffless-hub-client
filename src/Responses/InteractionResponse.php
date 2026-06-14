@@ -5,18 +5,18 @@ namespace Faffless\HubClient\Responses;
 class InteractionResponse
 {
     public function __construct(
-        public readonly ?int $interactionId,
-        public readonly ?int $id,
+        public readonly ?string $interactionUuid,
         public readonly ?string $status,
         public readonly array $data,
     ) {}
 
     public static function from(array $data): self
     {
+        $resource = isset($data['data']) && is_array($data['data']) ? $data['data'] : $data;
+
         return new self(
-            interactionId: isset($data['interaction_id']) ? (int) $data['interaction_id'] : null,
-            id: isset($data['id']) ? (int) $data['id'] : null,
-            status: isset($data['status']) ? (string) $data['status'] : null,
+            interactionUuid: isset($resource['interaction_uuid']) ? (string) $resource['interaction_uuid'] : null,
+            status: isset($resource['status']) ? (string) $resource['status'] : null,
             data: $data,
         );
     }
