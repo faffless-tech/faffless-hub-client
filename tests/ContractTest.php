@@ -56,6 +56,9 @@ $assert(str_contains($client, 'issueApplicationApiKey('), 'Internal API key issu
 $assert(str_contains($client, 'retireApplicationApiKey('), 'Internal API key retire helper is missing.');
 $assert(str_contains($client, 'issueTenantAccountApplicationApiKey('), 'Tenant API key issue helper is missing.');
 $assert(str_contains($client, 'retireTenantAccountApplicationApiKey('), 'Tenant API key retire helper is missing.');
+$assert(str_contains($client, 'createTenantAccountProviderOnboarding('), 'Tenant provider onboarding helper is missing.');
+$assert(str_contains($client, 'tenantAccountProviderOnboardings('), 'Tenant provider onboarding list helper is missing.');
+$assert(str_contains($client, 'tenantAccountReadiness('), 'Tenant Account readiness helper is missing.');
 $assert(str_contains($interactionResponse, 'interaction_uuid'), 'Interaction response does not read interaction_uuid.');
 $assert(str_contains($verificationResponse, 'interaction_uuid'), 'Verification response does not read interaction_uuid.');
 $assert(str_contains($interactionResponse, "\$data['data']"), 'Interaction response does not unwrap JSON Resource data.');

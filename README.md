@@ -60,6 +60,23 @@ $account = $hub->createTenantAccount([
 
 $accountUuid = $account['data']['uuid'];
 
+$onboarding = $hub->createTenantAccountProviderOnboarding($accountUuid, [
+    'idempotency_key' => 'rpos:handy-rentals:communications:v1',
+    'bundles' => ['sms', 'phone_verification'],
+    'providers' => [
+        'twilio' => [
+            'mode' => 'import',
+            'account_sid' => 'AC...',
+            'api_key_sid' => 'SK...',
+            'api_key_secret' => $secretFromProtectedStorage,
+            'messaging_service_sid' => 'MG...',
+            'verify_service_sid' => 'VA...',
+        ],
+    ],
+]);
+
+$readiness = $hub->tenantAccountReadiness($accountUuid);
+
 $application = $hub->createTenantAccountApplication($accountUuid, [
     'name' => 'Rental PWA',
     'api_key_name' => 'Rental PWA production',

@@ -192,6 +192,26 @@ class FafflessHubClient
         return $this->json($this->tenantGet("accounts/{$accountUuid}/billing-summary"));
     }
 
+    public function tenantAccountProviderOnboardings(string $accountUuid, array $filters = []): array
+    {
+        return $this->json($this->tenantGet("accounts/{$accountUuid}/provider-onboardings", $filters));
+    }
+
+    public function tenantAccountProviderOnboarding(string $accountUuid, string $onboardingUuid): array
+    {
+        return $this->json($this->tenantGet("accounts/{$accountUuid}/provider-onboardings/{$onboardingUuid}"));
+    }
+
+    public function createTenantAccountProviderOnboarding(string $accountUuid, array $payload): array
+    {
+        return $this->json($this->tenantPost("accounts/{$accountUuid}/provider-onboardings", $payload));
+    }
+
+    public function tenantAccountReadiness(string $accountUuid): array
+    {
+        return $this->json($this->tenantGet("accounts/{$accountUuid}/readiness"));
+    }
+
     public function tenantAccountApplications(string $accountUuid, array $filters = []): array
     {
         return $this->json($this->tenantGet("accounts/{$accountUuid}/applications", $filters));
