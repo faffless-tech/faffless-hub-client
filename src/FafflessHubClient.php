@@ -4,6 +4,7 @@ namespace Faffless\HubClient;
 
 use Faffless\HubClient\Exceptions\MissingCredentialsException;
 use Faffless\HubClient\Responses\InteractionResponse;
+use Faffless\HubClient\Responses\VerificationChannelsResponse;
 use Faffless\HubClient\Responses\VerificationResponse;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -90,6 +91,15 @@ class FafflessHubClient
     {
         return VerificationResponse::from($this->json(
             $this->post($this->applicationPath('verification'), $payload, $idempotencyKey)
+        ));
+    }
+
+    public function verificationChannels(string $recipient): VerificationChannelsResponse
+    {
+        return VerificationChannelsResponse::from($this->json(
+            $this->get($this->applicationPath('verification/channels'), [
+                'recipient' => $recipient,
+            ])
         ));
     }
 
@@ -332,7 +342,7 @@ class FafflessHubClient
             throw MissingCredentialsException::make();
         }
 
-        return Http::timeout((int) config('faffless-hub.timeout', 10))
+        return Http::timeout((int) config('faffless-hub.timeout', 30))
             ->withToken((string) $apiKey)
             ->withHeaders(array_filter([
                 'Idempotency-Key' => $idempotencyKey,

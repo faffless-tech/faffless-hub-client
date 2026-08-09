@@ -124,9 +124,12 @@ $service = $hub->createProviderService($provider['provider_account']['uuid'], [
 Phone verification:
 
 ```php
+$routes = $hub->verificationChannels('+64211234567');
+// NZ example: call first, then WhatsApp when those routes are active.
+
 $verification = $hub->startVerification([
-    'channel' => 'sms', // or 'call' to start with a voice call
-    'recipient' => '+15551234567',
+    // Omit channel to use the primary route returned by Faffless.
+    'recipient' => '+64211234567',
     'purpose' => 'login',
 ]);
 
@@ -136,7 +139,11 @@ $result = $hub->checkVerification(
 );
 ```
 
-Use `channel: call` when the consuming app should start with voice verification instead of the normal SMS-first flow. Use `nextVerification()` to trigger fallback steps such as SMS to call escalation.
+Applications should render the ordered channels returned by
+`verificationChannels()` rather than hard-coding country rules. Australia is
+SMS-first when configured; New Zealand is voice-first and does not offer SMS by
+default. `sms`, `call`, and `whatsapp` all use the same Faffless-owned challenge.
+Use `nextVerification()` when the user selects another offered channel.
 
 ## Contract
 

@@ -6,6 +6,7 @@ $client = file_get_contents($root.'/src/FafflessHubClient.php');
 $config = file_get_contents($root.'/config/faffless-hub.php');
 $interactionResponse = file_get_contents($root.'/src/Responses/InteractionResponse.php');
 $verificationResponse = file_get_contents($root.'/src/Responses/VerificationResponse.php');
+$verificationChannelsResponse = file_get_contents($root.'/src/Responses/VerificationChannelsResponse.php');
 
 $failures = [];
 
@@ -43,13 +44,14 @@ foreach ([
     'public readonly ?int',
     'int|string',
 ] as $legacyToken) {
-    $assert(! str_contains($client.$config.$interactionResponse.$verificationResponse, $legacyToken), "Legacy token remains: {$legacyToken}");
+    $assert(! str_contains($client.$config.$interactionResponse.$verificationResponse.$verificationChannelsResponse, $legacyToken), "Legacy token remains: {$legacyToken}");
 }
 
 $assert(str_contains($client, 'withToken((string) $apiKey)'), 'Client must authenticate with a single bearer API key.');
 $assert(str_contains($client, 'withApplicationApiKey('), 'Client must support per-request Application API keys for platform bridges.');
 $assert(str_contains($client, '$client = clone $this;'), 'Application API key override must clone the client singleton.');
 $assert(str_contains($client, 'applicationPost('), 'Application POST helper is missing.');
+$assert(str_contains($client, 'verificationChannels('), 'Verification channel discovery helper is missing.');
 $assert(str_contains($config, 'tenant_api_key'), 'Tenant API key config is missing.');
 $assert(str_contains($client, "credential: 'tenant_api_key'"), 'Tenant helpers must use tenant API key credential mode.');
 $assert(str_contains($client, 'issueApplicationApiKey('), 'Internal API key issue helper is missing.');
@@ -63,6 +65,7 @@ $assert(str_contains($interactionResponse, 'interaction_uuid'), 'Interaction res
 $assert(str_contains($verificationResponse, 'interaction_uuid'), 'Verification response does not read interaction_uuid.');
 $assert(str_contains($interactionResponse, "\$data['data']"), 'Interaction response does not unwrap JSON Resource data.');
 $assert(str_contains($verificationResponse, "\$data['data']"), 'Verification response does not unwrap JSON Resource data.');
+$assert(str_contains($verificationChannelsResponse, "\$data['data']"), 'Verification channels response does not unwrap JSON Resource data.');
 
 if ($failures !== []) {
     fwrite(STDERR, implode(PHP_EOL, $failures).PHP_EOL);
