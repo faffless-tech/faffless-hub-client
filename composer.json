@@ -15,7 +15,11 @@
         }
     },
     "scripts": {
-        "test": "php tests/ContractTest.php",
+        "test": [
+            "php tests/ContractTest.php",
+            "php tests/CredentialIsolationTest.php",
+            "php tests/OperatorMutationTest.php"
+        ],
         "lint": "find src -name '*.php' -print0 | xargs -0 -n1 php -l",
         "security:audit": "composer audit --no-interaction",
         "security:sbom": [
