@@ -29,7 +29,17 @@ $assert = static function (bool $condition, string $message): void {
 
 Http::swap(new Factory);
 Http::preventStrayRequests();
-Http::fake(['hub.example.test/*' => Http::response(['data' => []])]);
+Http::fake(function ($request) {
+    if ($request->method() === 'POST' && str_contains($request->url(), '/faffless/')) {
+        $retire = str_ends_with($request->url(), '/retire');
+        return Http::response([
+            'api_key' => 'one-time-operator-fixture-secret',
+            'data' => ['uuid' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'tenant_uuid' => 'tenant-alpha',
+                'status' => $retire ? 'revoked' : 'active'],
+        ], $retire ? 200 : 201);
+    }
+    return Http::response(['data' => []]);
+});
 
 $base = new FafflessHubClient;
 $alpha = $base->withTenantApiKey('tenant-alpha-fixture');
@@ -45,7 +55,7 @@ $operator->issueFafflessTenantApiKey('tenant-alpha', [
     'abilities' => ['tenant:readiness:read'],
 ]);
 $operator->fafflessTenantApiKeys('tenant-alpha');
-$operator->retireFafflessTenantApiKey('tenant-alpha', 'key-alpha');
+$operator->retireFafflessTenantApiKey('tenant-alpha', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 $beta->tenantAccountUsage('account-beta');
 
 $recorded = Http::recorded();
@@ -59,7 +69,7 @@ foreach ($expected as $index => $key) {
 }
 $assert($recorded[5][0]->url() === 'https://hub.example.test/api/v1/faffless/tenants/tenant-alpha/api-keys', 'Operator issue path mismatch.');
 $assert($recorded[5][0]['abilities'] === ['tenant:readiness:read'], 'Explicit abilities were not preserved.');
-$assert($recorded[7][0]->url() === 'https://hub.example.test/api/v1/faffless/tenants/tenant-alpha/api-keys/key-alpha/retire', 'Operator retire path mismatch.');
+$assert($recorded[7][0]->url() === 'https://hub.example.test/api/v1/faffless/tenants/tenant-alpha/api-keys/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/retire', 'Operator retire path mismatch.');
 $assert(config('faffless-hub.tenant_api_key') === 'configured-tenant-fixture', 'Shared configuration was mutated.');
 
 foreach ([

@@ -3,12 +3,14 @@
 namespace Faffless\HubClient;
 
 use Faffless\HubClient\Exceptions\MissingCredentialsException;
+use Faffless\HubClient\Exceptions\FafflessHubException;
 use Faffless\HubClient\Responses\InteractionResponse;
 use Faffless\HubClient\Responses\VerificationChannelsResponse;
 use Faffless\HubClient\Responses\VerificationResponse;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FafflessHubClient
 {
@@ -50,14 +52,34 @@ class FafflessHubClient
 
     public function issueFafflessTenantApiKey(string $tenantUuid, array $payload): array
     {
-        return $this->json($this->request(credential: 'faffless_api_key')
-            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys"), $payload)->throw());
+        $response = $this->request(credential: 'faffless_api_key')
+            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys"), $payload);
+
+        return $this->operatorKeyResponse($response, 201, $tenantUuid);
     }
 
     public function retireFafflessTenantApiKey(string $tenantUuid, string $apiKeyUuid): array
     {
-        return $this->json($this->request(credential: 'faffless_api_key')
-            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys/{$apiKeyUuid}/retire"))->throw());
+        $response = $this->request(credential: 'faffless_api_key')
+            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys/{$apiKeyUuid}/retire"));
+
+        return $this->operatorKeyResponse($response, 200, $tenantUuid, $apiKeyUuid);
+    }
+
+    protected function operatorKeyResponse(Response $response, int $status, string $tenantUuid, ?string $keyUuid = null): array
+    {
+        $payload = $response->json();
+        $data = is_array($payload) ? ($payload['data'] ?? null) : null;
+        if ($response->status() !== $status || ! str_contains(strtolower($response->header('Content-Type')), 'application/json')
+            || ! is_array($data) || ! is_string($data['uuid'] ?? null) || ! Str::isUuid($data['uuid'])
+            || ($data['tenant_uuid'] ?? null) !== $tenantUuid
+            || ($keyUuid !== null && $data['uuid'] !== $keyUuid)
+            || ($data['status'] ?? null) !== ($keyUuid === null ? 'active' : 'revoked')
+            || ($keyUuid === null && (! is_string($payload['api_key'] ?? null) || strlen($payload['api_key']) < 20))) {
+            throw new FafflessHubException('The Hub did not return a valid confirmed operator key mutation. Inspect key metadata before retrying.');
+        }
+
+        return $payload;
     }
 
     public function withApplicationApiKey(string $apiKey): self
@@ -384,12 +406,14 @@ class FafflessHubClient
             throw MissingCredentialsException::make();
         }
 
-        return Http::timeout((int) config('faffless-hub.timeout', 30))
+        $request = Http::timeout((int) config('faffless-hub.timeout', 30))
             ->connectTimeout((int) config('faffless-hub.connect_timeout', 3))
             ->withToken((string) $apiKey)
             ->withHeaders(array_filter([
                 'Idempotency-Key' => $idempotencyKey,
             ]));
+
+        return $credential === 'faffless_api_key' ? $request->timeout(10)->withoutRedirecting() : $request;
     }
 
     protected function tenantGet(string $path, array $query = []): Response
