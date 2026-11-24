@@ -18,7 +18,47 @@ class FafflessHubClient
 
     protected const INTERNAL_API_PREFIX = '/api/v1/internal';
 
+    protected const FAFFLESS_API_PREFIX = '/api/v1/faffless';
+
     protected ?string $applicationApiKey = null;
+
+    protected ?string $tenantApiKey = null;
+
+    protected ?string $fafflessApiKey = null;
+
+    public function withTenantApiKey(string $apiKey): self
+    {
+        $client = clone $this;
+        $client->tenantApiKey = $apiKey;
+
+        return $client;
+    }
+
+    public function withFafflessApiKey(string $apiKey): self
+    {
+        $client = clone $this;
+        $client->fafflessApiKey = $apiKey;
+
+        return $client;
+    }
+
+    public function fafflessTenantApiKeys(string $tenantUuid, array $filters = []): array
+    {
+        return $this->json($this->request(credential: 'faffless_api_key')
+            ->get($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys"), $this->clean($filters))->throw());
+    }
+
+    public function issueFafflessTenantApiKey(string $tenantUuid, array $payload): array
+    {
+        return $this->json($this->request(credential: 'faffless_api_key')
+            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys"), $payload)->throw());
+    }
+
+    public function retireFafflessTenantApiKey(string $tenantUuid, string $apiKeyUuid): array
+    {
+        return $this->json($this->request(credential: 'faffless_api_key')
+            ->post($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys/{$apiKeyUuid}/retire"))->throw());
+    }
 
     public function withApplicationApiKey(string $apiKey): self
     {
@@ -182,9 +222,9 @@ class FafflessHubClient
         return $this->json($this->tenantPost("accounts/{$accountUuid}/disable"));
     }
 
-    public function tenantAccountUsage(string $accountUuid): array
+    public function tenantAccountUsage(string $accountUuid, array $filters = []): array
     {
-        return $this->json($this->tenantGet("accounts/{$accountUuid}/usage"));
+        return $this->json($this->tenantGet("accounts/{$accountUuid}/usage", $filters));
     }
 
     public function tenantAccountWallets(string $accountUuid): array
@@ -334,15 +374,18 @@ class FafflessHubClient
 
     protected function request(?string $idempotencyKey = null, string $credential = 'api_key'): PendingRequest
     {
-        $apiKey = $credential === 'api_key' && $this->applicationApiKey
-            ? $this->applicationApiKey
-            : config('faffless-hub.'.$credential);
+        $apiKey = match ($credential) {
+            'tenant_api_key' => $this->tenantApiKey ?? config('faffless-hub.tenant_api_key'),
+            'faffless_api_key' => $this->fafflessApiKey,
+            default => $this->applicationApiKey ?: config('faffless-hub.'.$credential),
+        };
 
         if (! $apiKey) {
             throw MissingCredentialsException::make();
         }
 
         return Http::timeout((int) config('faffless-hub.timeout', 30))
+            ->connectTimeout((int) config('faffless-hub.connect_timeout', 3))
             ->withToken((string) $apiKey)
             ->withHeaders(array_filter([
                 'Idempotency-Key' => $idempotencyKey,

@@ -50,6 +50,26 @@ $interactionUuid = $response->interactionUuid;
 $events = $hub->events($interactionUuid);
 ```
 
+For an application serving multiple Tenants, use a per-instance credential:
+
+```php
+$tenantClient = $hub->withTenantApiKey($serverSideTenantKey);
+$readiness = $tenantClient->tenantAccountReadiness($accountUuid);
+$usage = $tenantClient->tenantAccountUsage($accountUuid, ['page' => 2, 'per_page' => 25]);
+```
+
+The original client and shared configuration stay unchanged. An explicitly empty
+Tenant override fails closed. Keep each Tenant key server-side and derive its
+Account UUID from an authorized Tenant context.
+
+Trusted Faffless operators can use `withFafflessApiKey($operatorKey)` with
+`fafflessTenantApiKeys($tenantUuid)`, `issueFafflessTenantApiKey($tenantUuid,
+$payload)`, and `retireFafflessTenantApiKey($tenantUuid, $keyUuid)`. These calls
+use the `/api/v1/faffless` surface and require the explicit operator credential;
+they never fall back to runtime or Tenant credentials. Key issuance returns a
+one-time secret: persist it securely, never log it, and inspect/retire orphaned
+key metadata before repeating an ambiguous failed issue request.
+
 Use the tenant automation API for managed accounts and applications:
 
 ```php
