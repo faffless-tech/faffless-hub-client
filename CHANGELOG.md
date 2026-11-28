@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### v0.1.10 (upcoming)
+
+- Harden Tenant Application creation, key issuance/retirement and disable calls:
+  require the expected success status and a nonempty JSON object, reject redirects,
+  use 3-second connect / 10-second overall timeouts, and never retry automatically.
+- Mutation failures expose only a generic reconciliation message and the HTTP
+  status as the exception code (zero for connection failures), without response
+  bodies, redirect targets or nested transport exceptions. Consumers must still
+  validate resource ownership and resulting state.
+
+
 - Add clone-based `withTenantApiKey()` for isolated per-Tenant requests without
   changing shared configuration or the original client.
 - Allow optional pagination filters on `tenantAccountUsage()`.
