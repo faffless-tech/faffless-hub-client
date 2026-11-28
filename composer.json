@@ -21,7 +21,8 @@
             "php tests/OperatorMutationTest.php",
             "php tests/TenantApplicationMutationTest.php",
             "php tests/ApplicationEnvironmentTest.php",
-            "php tests/ConsoleReadTest.php"
+            "php tests/ConsoleReadTest.php",
+            "php tests/ManagerDomainTest.php"
         ],
         "lint": "find src -name '*.php' -print0 | xargs -0 -n1 php -l",
         "security:audit": "composer audit --no-interaction",

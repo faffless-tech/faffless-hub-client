@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### v0.1.13 (upcoming)
+
+- Add isolated operator-only Manager domain reads and audited mutations for
+  Accounts, Applications, environments, keys, provider records and first-party
+  operators. Resource paths are finite and UUID-only; each mutation requires a
+  request UUID. Preserve false, null and empty-list PATCH values.
+- Require exact JSON success with 3-second connect / 10-second total limits,
+  no redirects or retries, and safe failures that retain no response body.
+  Callers must confirm identity/state and return generated secrets only once.
+
+
 ### v0.1.12 (upcoming)
 
 - Add isolated operator Tenant metadata and Tenant Account interaction list/detail reads for console approval and Logs. UUIDs are validated before transport; reads require exact JSON success, bounded timeouts and no redirects/retries, with safe failures.

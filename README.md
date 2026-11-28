@@ -228,3 +228,21 @@ persistent local storage. A timeout or unconfirmed response must be reconciled
 before another issuance; the client does not retry. Preserve older keys until
 their consumers have explicitly migrated. Existing unassigned keys retain their
 prior Application behavior and are not silently assigned to an environment.
+
+### Audited Manager operations (v0.1.13)
+
+Manager calls use an isolated `withFafflessApiKey()` operator credential, never
+an Application or Tenant key. Both Hub console-operator and Manager-domain flags
+must be enabled. `managerResources()` and `managerResource()` read curated
+resources; `createManagerResource()`, `updateManagerResource()`,
+`deleteManagerResource()` and `managerResourceAction()` use the finite Manager
+route set. Nested collections are `application-environments`, `application-keys`,
+`operator-keys` and `tenant-keys`, with the parent UUID supplied separately.
+
+Every mutation payload requires a fresh `request_uuid`. A committed request
+cannot be replayed: 409 means inspect current state, including after a lost
+response. There are no automatic retries. Preserve existing keys until callers
+have migrated; new runtime keys require an explicit environment UUID. Return
+newly generated keys or provider secrets through a one-time private download,
+never logs, session/page props or persistent storage. Validate returned identity,
+ownership and state before accepting a mutation. Billing operations are excluded.
