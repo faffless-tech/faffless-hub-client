@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### v0.1.12 (upcoming)
+
+- Add isolated operator Tenant metadata and Tenant Account interaction list/detail reads for console approval and Logs. UUIDs are validated before transport; reads require exact JSON success, bounded timeouts and no redirects/retries, with safe failures.
+
 ### v0.1.11 (upcoming)
 
 - Add UUID-scoped Tenant Application environment list/show/create/update/archive
