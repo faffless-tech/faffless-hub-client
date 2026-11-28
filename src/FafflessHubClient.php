@@ -7,6 +7,7 @@ use Faffless\HubClient\Exceptions\FafflessHubException;
 use Faffless\HubClient\Responses\InteractionResponse;
 use Faffless\HubClient\Responses\VerificationChannelsResponse;
 use Faffless\HubClient\Responses\VerificationResponse;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -296,22 +297,22 @@ class FafflessHubClient
 
     public function createTenantAccountApplication(string $accountUuid, array $payload): array
     {
-        return $this->json($this->tenantPost("accounts/{$accountUuid}/applications", $payload));
+        return $this->tenantApplicationMutation("accounts/{$accountUuid}/applications", $payload, 201);
     }
 
     public function issueTenantAccountApplicationApiKey(string $accountUuid, string $applicationUuid, array $payload = []): array
     {
-        return $this->json($this->tenantPost("accounts/{$accountUuid}/applications/{$applicationUuid}/api-keys", $payload));
+        return $this->tenantApplicationMutation("accounts/{$accountUuid}/applications/{$applicationUuid}/api-keys", $payload, 201);
     }
 
     public function retireTenantAccountApplicationApiKey(string $accountUuid, string $applicationUuid, string $apiKeyUuid): array
     {
-        return $this->json($this->tenantPost("accounts/{$accountUuid}/applications/{$applicationUuid}/api-keys/{$apiKeyUuid}/retire"));
+        return $this->tenantApplicationMutation("accounts/{$accountUuid}/applications/{$applicationUuid}/api-keys/{$apiKeyUuid}/retire", [], 200);
     }
 
     public function disableTenantAccountApplication(string $accountUuid, string $applicationUuid): array
     {
-        return $this->json($this->tenantPost("accounts/{$accountUuid}/applications/{$applicationUuid}/disable"));
+        return $this->tenantApplicationMutation("accounts/{$accountUuid}/applications/{$applicationUuid}/disable", [], 200);
     }
 
     public function applications(array $filters = []): array
@@ -428,6 +429,36 @@ class FafflessHubClient
         return $this->request($idempotencyKey, 'tenant_api_key')
             ->post($this->url($this->tenantPath($path)), $this->clean($payload))
             ->throw();
+    }
+
+    /**
+     * Consumers must additionally validate returned resource identity and state.
+     */
+    protected function tenantApplicationMutation(string $path, array $payload, int $expectedStatus): array
+    {
+        try {
+            $response = $this->request(credential: 'tenant_api_key')
+                ->connectTimeout(3)->timeout(10)->withoutRedirecting()
+                ->post($this->url($this->tenantPath($path)), $this->clean($payload));
+        } catch (ConnectionException) {
+            throw new FafflessHubException('The Hub Application mutation could not be confirmed. Reconcile its state before retrying.');
+        }
+
+        $contentType = strtolower(trim(explode(';', $response->header('Content-Type'))[0]));
+        if ($response->status() !== $expectedStatus || $contentType !== 'application/json') {
+            throw new FafflessHubException('The Hub did not return a confirmed Application mutation. Reconcile its state before retrying.', $response->status());
+        }
+
+        try {
+            $object = json_decode($response->body(), flags: JSON_THROW_ON_ERROR);
+            if (! $object instanceof \stdClass || get_object_vars($object) === []) {
+                throw new \JsonException;
+            }
+
+            return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new FafflessHubException('The Hub returned an invalid Application mutation response. Reconcile its state before retrying.', $response->status());
+        }
     }
 
     protected function tenantPatch(string $path, array $payload = []): Response
