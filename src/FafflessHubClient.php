@@ -315,6 +315,50 @@ class FafflessHubClient
         return $this->tenantApplicationMutation("accounts/{$accountUuid}/applications/{$applicationUuid}/disable", [], 200);
     }
 
+    public function tenantApplicationEnvironments(string $accountUuid, string $applicationUuid, array $filters = []): array
+    {
+        return $this->tenantEnvironmentRead($this->environmentPath($accountUuid, $applicationUuid), $filters);
+    }
+
+    public function tenantApplicationEnvironment(string $accountUuid, string $applicationUuid, string $environmentUuid): array
+    {
+        return $this->tenantEnvironmentRead($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid));
+    }
+
+    public function createTenantApplicationEnvironment(string $accountUuid, string $applicationUuid, array $payload): array
+    {
+        return $this->tenantEnvironmentMutation($this->environmentPath($accountUuid, $applicationUuid), $payload, 201);
+    }
+
+    public function updateTenantApplicationEnvironment(string $accountUuid, string $applicationUuid, string $environmentUuid, array $payload): array
+    {
+        return $this->tenantEnvironmentMutation($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid), $payload, 200, 'PATCH');
+    }
+
+    public function archiveTenantApplicationEnvironment(string $accountUuid, string $applicationUuid, string $environmentUuid, array $payload = []): array
+    {
+        return $this->tenantEnvironmentMutation($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid).'/archive', $payload, 200);
+    }
+
+    public function tenantApplicationEnvironmentApiKeys(string $accountUuid, string $applicationUuid, string $environmentUuid): array
+    {
+        return $this->tenantEnvironmentRead($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid).'/api-keys');
+    }
+
+    public function issueTenantApplicationEnvironmentApiKey(string $accountUuid, string $applicationUuid, string $environmentUuid, array $payload): array
+    {
+        return $this->tenantEnvironmentMutation($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid).'/api-keys', $payload, 201);
+    }
+
+    public function retireTenantApplicationEnvironmentApiKey(string $accountUuid, string $applicationUuid, string $environmentUuid, string $apiKeyUuid): array
+    {
+        if (! Str::isUuid($apiKeyUuid)) {
+            throw new FafflessHubException('The Application key identifier must be a UUID.');
+        }
+
+        return $this->tenantEnvironmentMutation($this->environmentPath($accountUuid, $applicationUuid, $environmentUuid).'/api-keys/'.rawurlencode($apiKeyUuid).'/retire', [], 200);
+    }
+
     public function applications(array $filters = []): array
     {
         return $this->json($this->get($this->internalPath('applications'), $filters));
@@ -458,6 +502,70 @@ class FafflessHubClient
             return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw new FafflessHubException('The Hub returned an invalid Application mutation response. Reconcile its state before retrying.', $response->status());
+        }
+    }
+
+    protected function tenantEnvironmentMutation(string $path, array $payload, int $expectedStatus, string $method = 'POST'): array
+    {
+        try {
+            $response = $this->request(credential: 'tenant_api_key')
+                ->connectTimeout(3)->timeout(10)->withoutRedirecting()
+                ->send($method, $this->url($this->tenantPath($path)), ['json' => $payload]);
+        } catch (ConnectionException) {
+            throw new FafflessHubException('The Hub Application mutation could not be confirmed. Reconcile its state before retrying.');
+        }
+
+        $contentType = strtolower(trim(explode(';', $response->header('Content-Type'))[0]));
+        if ($response->status() !== $expectedStatus || $contentType !== 'application/json') {
+            throw new FafflessHubException('The Hub did not return a confirmed Application mutation. Reconcile its state before retrying.', $response->status());
+        }
+
+        try {
+            $object = json_decode($response->body(), flags: JSON_THROW_ON_ERROR);
+            if (! $object instanceof \stdClass || get_object_vars($object) === []) {
+                throw new \JsonException;
+            }
+
+            return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new FafflessHubException('The Hub returned an invalid Application mutation response. Reconcile its state before retrying.', $response->status());
+        }
+    }
+
+    protected function environmentPath(string $accountUuid, string $applicationUuid, ?string $environmentUuid = null): string
+    {
+        foreach ([$accountUuid, $applicationUuid, ...($environmentUuid === null ? [] : [$environmentUuid])] as $uuid) {
+            if (! Str::isUuid($uuid)) {
+                throw new FafflessHubException('Application environment identifiers must be UUIDs.');
+            }
+        }
+        $path = 'accounts/'.rawurlencode($accountUuid).'/applications/'.rawurlencode($applicationUuid).'/environments';
+
+        return $environmentUuid === null ? $path : $path.'/'.rawurlencode($environmentUuid);
+    }
+
+    protected function tenantEnvironmentRead(string $path, array $query = []): array
+    {
+        try {
+            $response = $this->request(credential: 'tenant_api_key')
+                ->connectTimeout(3)->timeout(10)->withoutRedirecting()
+                ->get($this->url($this->tenantPath($path)), $this->clean($query));
+        } catch (ConnectionException) {
+            throw new FafflessHubException('The Hub Application environment could not be read.');
+        }
+        $contentType = strtolower(trim(explode(';', $response->header('Content-Type'))[0]));
+        if ($response->status() !== 200 || $contentType !== 'application/json') {
+            throw new FafflessHubException('The Hub did not return a confirmed Application environment response.', $response->status());
+        }
+        try {
+            $object = json_decode($response->body(), flags: JSON_THROW_ON_ERROR);
+            if (! $object instanceof \stdClass || get_object_vars($object) === []) {
+                throw new \JsonException;
+            }
+
+            return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new FafflessHubException('The Hub returned an invalid Application environment response.', $response->status());
         }
     }
 

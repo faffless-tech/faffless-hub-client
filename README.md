@@ -187,3 +187,44 @@ weekly community-rule audit remains a separate check.
 These are package checks. Releases use reviewed semantic-version tags and
 consumer dependency updates; there is no package UAT or Production deployment.
 Existing released tags must never be changed or reused.
+
+
+### Application environments (v0.1.11)
+
+Environment operations use a Tenant credential and immutable Account,
+Application and environment UUIDs. Names and registered URLs are descriptive;
+renaming an environment does not change its identity or grant live access.
+
+```php
+$tenant = $hub->withTenantApiKey($tenantApiKey);
+$environments = $tenant->tenantApplicationEnvironments($accountUuid, $applicationUuid, [
+    'search' => 'QA', 'page' => 1, 'per_page' => 25,
+]);
+$environment = $tenant->createTenantApplicationEnvironment($accountUuid, $applicationUuid, [
+    'name' => 'QA', 'test_mode' => true,
+    'urls' => [['label' => 'API', 'url' => 'https://qa.example.test']],
+]);
+$tenant->updateTenantApplicationEnvironment($accountUuid, $applicationUuid, $environmentUuid, [
+    'name' => 'Pre-release', 'test_email' => null, 'urls' => [],
+]);
+$keys = $tenant->tenantApplicationEnvironmentApiKeys($accountUuid, $applicationUuid, $environmentUuid);
+$issued = $tenant->issueTenantApplicationEnvironmentApiKey($accountUuid, $applicationUuid, $environmentUuid, [
+    'name' => 'History reader', 'abilities' => ['application:interactions:read'],
+]);
+$tenant->retireTenantApplicationEnvironmentApiKey($accountUuid, $applicationUuid, $environmentUuid, $keyUuid);
+$tenant->archiveTenantApplicationEnvironment($accountUuid, $applicationUuid, $environmentUuid, [
+    'revoke_keys' => true,
+]);
+```
+
+Environment write and key retirement permissions are separate. Archiving with
+active keys requires explicit revocation and the matching retirement permission.
+A live delivery transition requires the Hub's explicit confirmation field;
+creating or renaming a Production label alone does not enable live delivery.
+
+The issuance result contains a one-time `api_key`. Consumers must return it only
+through the intended secure download flow, never logs, page props, sessions or
+persistent local storage. A timeout or unconfirmed response must be reconciled
+before another issuance; the client does not retry. Preserve older keys until
+their consumers have explicitly migrated. Existing unassigned keys retain their
+prior Application behavior and are not silently assigned to an environment.
