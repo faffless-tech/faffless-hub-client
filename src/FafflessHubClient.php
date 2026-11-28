@@ -51,6 +51,58 @@ class FafflessHubClient
             ->get($this->url(self::FAFFLESS_API_PREFIX."/tenants/{$tenantUuid}/api-keys"), $this->clean($filters))->throw());
     }
 
+    public function fafflessTenant(string $tenantUuid): array
+    {
+        $this->requireConsoleUuid($tenantUuid);
+
+        return $this->consoleRead(self::FAFFLESS_API_PREFIX.'/tenants/'.rawurlencode($tenantUuid), 'faffless_api_key');
+    }
+
+    public function tenantAccountInteractions(string $accountUuid, array $filters = []): array
+    {
+        $this->requireConsoleUuid($accountUuid);
+
+        return $this->consoleRead($this->tenantPath('accounts/'.rawurlencode($accountUuid).'/interactions'), 'tenant_api_key', $filters);
+    }
+
+    public function tenantAccountInteraction(string $accountUuid, string $interactionUuid): array
+    {
+        $this->requireConsoleUuid($accountUuid);
+        $this->requireConsoleUuid($interactionUuid);
+
+        return $this->consoleRead($this->tenantPath('accounts/'.rawurlencode($accountUuid).'/interactions/'.rawurlencode($interactionUuid)), 'tenant_api_key');
+    }
+
+    protected function requireConsoleUuid(string $uuid): void
+    {
+        if (! Str::isUuid($uuid)) {
+            throw new FafflessHubException('The console resource identifier must be a UUID.');
+        }
+    }
+
+    protected function consoleRead(string $path, string $credential, array $query = []): array
+    {
+        try {
+            $response = $this->request(credential: $credential)->connectTimeout(3)->timeout(10)->withoutRedirecting()
+                ->get($this->url($path), $this->clean($query));
+        } catch (ConnectionException) {
+            throw new FafflessHubException('The Hub console resource could not be read.');
+        }
+        if ($response->status() !== 200 || strtolower(trim(explode(';', $response->header('Content-Type'))[0])) !== 'application/json') {
+            throw new FafflessHubException('The Hub did not confirm the console read.', $response->status());
+        }
+        try {
+            $object = json_decode($response->body(), flags: JSON_THROW_ON_ERROR);
+            if (! $object instanceof \stdClass || get_object_vars($object) === []) {
+                throw new \JsonException;
+            }
+
+            return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new FafflessHubException('The Hub returned an invalid console resource.', $response->status());
+        }
+    }
+
     public function issueFafflessTenantApiKey(string $tenantUuid, array $payload): array
     {
         $response = $this->request(credential: 'faffless_api_key')
