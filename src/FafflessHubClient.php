@@ -103,6 +103,125 @@ class FafflessHubClient
         }
     }
 
+    /**
+     * Manager resources are a finite, operator-only contract. Child collections
+     * require their owning Application, operator Application or Tenant UUID.
+     */
+    public function managerOptions(): array
+    {
+        return $this->consoleRead(self::FAFFLESS_API_PREFIX.'/manager/options', 'faffless_api_key');
+    }
+
+    public function managerResources(string $resource, ?string $parentUuid = null, array $filters = []): array
+    {
+        return $this->consoleRead($this->managerPath($resource, $parentUuid), 'faffless_api_key', $filters);
+    }
+
+    public function managerResource(string $resource, string $uuid, ?string $parentUuid = null): array
+    {
+        $this->requireConsoleUuid($uuid);
+
+        return $this->consoleRead($this->managerPath($resource, $parentUuid).'/'.rawurlencode($uuid), 'faffless_api_key');
+    }
+
+    public function createManagerResource(string $resource, array $payload, ?string $parentUuid = null): array
+    {
+        return $this->managerMutation('POST', $this->managerPath($resource, $parentUuid), $payload, 201);
+    }
+
+    public function updateManagerResource(string $resource, string $uuid, array $payload, ?string $parentUuid = null): array
+    {
+        $this->requireManagerEditableResource($resource);
+        $this->requireConsoleUuid($uuid);
+
+        return $this->managerMutation('PATCH', $this->managerPath($resource, $parentUuid).'/'.rawurlencode($uuid), $payload, 200);
+    }
+
+    public function deleteManagerResource(string $resource, string $uuid, string $requestUuid): array
+    {
+        if (! in_array($resource, ['providers', 'provider-accounts', 'provider-services', 'activation-templates', 'provider-service-steps'], true)) {
+            throw new FafflessHubException('This Manager resource has no delete operation.');
+        }
+        $this->requireConsoleUuid($uuid);
+
+        return $this->managerMutation('DELETE', $this->managerPath($resource, null).'/'.rawurlencode($uuid), ['request_uuid' => $requestUuid, 'confirmation' => true], 200);
+    }
+
+    /** Generated keys and provider secrets must be delivered once, never persisted by a console. */
+    public function managerResourceAction(string $resource, string $uuid, string $action, array $payload, ?string $parentUuid = null): array
+    {
+        $allowed = match ($resource) {
+            'accounts' => ['activate', 'disable'],
+            'applications' => ['activate', 'disable', 'archive'],
+            'operator-applications' => ['activate', 'disable'],
+            'application-environments' => ['archive'],
+            'application-keys', 'operator-keys', 'tenant-keys' => ['retire'],
+            'provider-accounts', 'provider-services' => ['secrets'],
+            default => [],
+        };
+        if (! in_array($action, $allowed, true)) {
+            throw new FafflessHubException('Unknown Manager resource action.');
+        }
+        $this->requireConsoleUuid($uuid);
+        $status = $action === 'secrets' && ($payload['generate'] ?? false) === true ? 201 : 200;
+
+        return $this->managerMutation('POST', $this->managerPath($resource, $parentUuid).'/'.rawurlencode($uuid).'/'.$action, $payload, $status);
+    }
+
+    protected function requireManagerEditableResource(string $resource): void
+    {
+        if (in_array($resource, ['application-keys', 'operator-keys', 'tenant-keys'], true)) {
+            throw new FafflessHubException('Manager keys support listing, issuance and retirement only.');
+        }
+    }
+
+    protected function managerPath(string $resource, ?string $parentUuid): string
+    {
+        $top = ['tenants', 'accounts', 'applications', 'operator-applications', 'providers', 'provider-accounts', 'provider-services', 'activation-templates', 'provider-service-steps'];
+        $nested = [
+            'application-environments' => ['applications', 'environments'],
+            'application-keys' => ['applications', 'api-keys'],
+            'operator-keys' => ['operator-applications', 'api-keys'],
+            'tenant-keys' => ['tenants', 'api-keys'],
+        ];
+        if (in_array($resource, $top, true) && $parentUuid === null) {
+            return self::FAFFLESS_API_PREFIX.'/manager/'.$resource;
+        }
+        if (isset($nested[$resource]) && $parentUuid !== null) {
+            $this->requireConsoleUuid($parentUuid);
+            [$parent, $collection] = $nested[$resource];
+
+            return self::FAFFLESS_API_PREFIX.'/manager/'.$parent.'/'.rawurlencode($parentUuid).'/'.$collection;
+        }
+        throw new FafflessHubException('Unknown Manager resource or missing parent UUID.');
+    }
+
+    protected function managerMutation(string $method, string $path, array $payload, int $expectedStatus): array
+    {
+        if (! is_string($payload['request_uuid'] ?? null) || ! Str::isUuid($payload['request_uuid'])) {
+            throw new FafflessHubException('Manager mutations require a request UUID.');
+        }
+        try {
+            $response = $this->request(credential: 'faffless_api_key')->acceptJson()->connectTimeout(3)->timeout(10)->withoutRedirecting()
+                ->send($method, $this->url($path), ['json' => $payload]);
+        } catch (ConnectionException) {
+            throw new FafflessHubException('The Hub Manager change could not be confirmed. Read current state before another request.');
+        }
+        if ($response->status() !== $expectedStatus || strtolower(trim(explode(';', $response->header('Content-Type'))[0])) !== 'application/json') {
+            throw new FafflessHubException('The Hub did not confirm the Manager change. Read current state before another request.', $response->status());
+        }
+        try {
+            $object = json_decode($response->body(), flags: JSON_THROW_ON_ERROR);
+            if (! $object instanceof \stdClass || get_object_vars($object) === []) {
+                throw new \JsonException;
+            }
+
+            return json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new FafflessHubException('The Hub returned an invalid Manager result. Read current state before another request.', $response->status());
+        }
+    }
+
     public function issueFafflessTenantApiKey(string $tenantUuid, array $payload): array
     {
         $response = $this->request(credential: 'faffless_api_key')
