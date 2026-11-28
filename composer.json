@@ -19,7 +19,8 @@
             "php tests/ContractTest.php",
             "php tests/CredentialIsolationTest.php",
             "php tests/OperatorMutationTest.php",
-            "php tests/TenantApplicationMutationTest.php"
+            "php tests/TenantApplicationMutationTest.php",
+            "php tests/ApplicationEnvironmentTest.php"
         ],
         "lint": "find src -name '*.php' -print0 | xargs -0 -n1 php -l",
         "security:audit": "composer audit --no-interaction",

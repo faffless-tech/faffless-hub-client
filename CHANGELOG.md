@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### v0.1.11 (upcoming)
+
+- Add UUID-scoped Tenant Application environment list/show/create/update/archive
+  and environment-key list/issue/retire methods for configurable deployments.
+- New calls use isolated Tenant credentials, 3-second connection / 10-second
+  overall timeouts, no redirects or retries, exact success statuses and strict
+  JSON object confirmation. Failures never retain secret response bodies.
+- Environment writes preserve explicit null destination clears, false values
+  and empty URL lists. Existing Application methods and protected mutation
+  signatures retain their previous behavior.
+- Existing Application creation can pass the additive issue_initial_key=false
+  payload through unchanged for an identity-only response. Consumers validate
+  ownership, environment identity and resulting state before showing results.
+
 ### v0.1.10 (upcoming)
 
 - Harden Tenant Application creation, key issuance/retirement and disable calls:
